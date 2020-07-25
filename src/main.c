@@ -5,11 +5,12 @@
 #include <time.h>
 #include <mpich/mpi.h>
 
-#define MASTER 0 // Rank 0 is the master node
+#define MASTER 0 // Rank 0 represents the master node
 #define MAX_INTERVAL 100
 #define MIN_INTERVAL 0
 
 // Colors to prompt out
+#define ANSI_COLOR_RED "\x1b[31m"
 #define ANSI_COLOR_GREEN "\x1b[32m"
 #define ANSI_COLOR_BLUE "\x1b[34m"
 #define ANSI_COLOR_CYAN "\x1b[36m"
@@ -41,20 +42,20 @@ double calcInterval(int intervStart, int intervEnd, double discretization) {
 
 /**
  * Validates the user's entry that represents the number of nodes to consider. As the project statement says, only 1, 2,
- *  4 or 10 slaves nodes are allowed, so this function verifies that.
+ * 4 or 10 slaves nodes are allowed, so this function verifies that.
  * 
  * @param numberOfNodes
  */
 void validateEntry(int numberOfNodes) {
   if (numberOfNodes != 1 && numberOfNodes != 2 && numberOfNodes != 4 && numberOfNodes != 10) {
-    printf("The number of slave nodes allowed is 1, 2, 4 or 10\n");
+    printf(ANSI_COLOR_RED"ERROR: "ANSI_COLOR_RESET"The number of slave nodes allowed is 1, 2, 4 or 10\n\n");
     exit(0);
   }
 }
 
 int main(int argc, char *argv[]) {
   int size, rank, nproc, subintervalSize, currIntervalStart, subintervalThreshold;
-  double discretization, calculatedValue, total;
+  double discretization, calculatedValue, total, initialTime, finalTime, execTime;
   MPI_Status status;
 
   // The discretization value is passed as command line argument
@@ -64,13 +65,15 @@ int main(int argc, char *argv[]) {
   MPI_Comm_size(MPI_COMM_WORLD, &size);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  validateEntry(size - 1); // Excludes the master node
-
   // Each child node will calc a subinterval of the integral
   currIntervalStart = MIN_INTERVAL;
   subintervalSize = MAX_INTERVAL / (size - 1); // Excludes the master node
 
   if (rank == MASTER) {
+    validateEntry(size - 1); // Excludes the master node
+
+    initialTime = clock();
+
     for (nproc = 1; nproc < size; nproc++) {
       subintervalThreshold = subintervalSize + currIntervalStart;
 
@@ -96,7 +99,12 @@ int main(int argc, char *argv[]) {
       total += calculatedValue;
     }
 
-    printf(ANSI_COLOR_CYAN"FINAL RESULT: "ANSI_COLOR_RESET"%lf\n\n", total);
+    printf(ANSI_COLOR_CYAN"LOG: "ANSI_COLOR_RESET"Result = %.4lf\n", total);
+
+    finalTime = clock();
+    execTime = (finalTime - initialTime) / CLOCKS_PER_SEC;
+
+    printf(ANSI_COLOR_CYAN"LOG: "ANSI_COLOR_RESET"Runtime = %.4lfs\n\n", execTime);
   } else {
     MPI_Recv(&discretization, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, &status);
     MPI_Recv(&currIntervalStart, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
