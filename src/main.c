@@ -5,16 +5,16 @@
 #include <time.h>
 #include <mpich/mpi.h>
 
-#define MASTER 0 // Rank 0 represents the master node
-#define MAX_INTERVAL 100
-#define MIN_INTERVAL 0
+#define MASTER        0 // Rank 0 represents the master node
+#define MAX_INTERVAL  100
+#define MIN_INTERVAL  0
 
 // Colors to prompt out
-#define ANSI_COLOR_RED "\x1b[31m"
-#define ANSI_COLOR_GREEN "\x1b[32m"
-#define ANSI_COLOR_BLUE "\x1b[34m"
-#define ANSI_COLOR_CYAN "\x1b[36m"
-#define ANSI_COLOR_RESET "\x1b[0m"
+#define ANSI_COLOR_RED    "\x1b[31m"
+#define ANSI_COLOR_GREEN  "\x1b[32m"
+#define ANSI_COLOR_BLUE   "\x1b[34m"
+#define ANSI_COLOR_CYAN   "\x1b[36m"
+#define ANSI_COLOR_RESET  "\x1b[0m"
 
 /**
  * Calcs the subinterval specified by the master node, using the parameterized discretization value.
