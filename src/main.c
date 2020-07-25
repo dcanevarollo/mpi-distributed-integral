@@ -117,11 +117,7 @@ int main(int argc, char *argv[]) {
       subintervalThreshold
     );
 
-    calculatedValue = calcInterval(
-      currIntervalStart,
-      subintervalThreshold,
-      discretization
-    );
+    calculatedValue = calcInterval(currIntervalStart, subintervalThreshold, discretization);
 
     printf(
       ANSI_COLOR_GREEN"SLAVE[%d]: "ANSI_COLOR_RESET"Calc complete. Sending %lf to master\n\n",
