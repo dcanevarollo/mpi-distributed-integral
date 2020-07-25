@@ -2,11 +2,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 #include <mpich/mpi.h>
 
 #define MASTER 0 // Rank 0 is the master node
 #define MAX_INTERVAL 100
 #define MIN_INTERVAL 0
+
+// Colors to prompt out
+#define ANSI_COLOR_GREEN "\x1b[32m"
+#define ANSI_COLOR_BLUE "\x1b[34m"
+#define ANSI_COLOR_CYAN "\x1b[36m"
+#define ANSI_COLOR_RESET "\x1b[0m"
 
 /**
  * Calcs the subinterval specified by the master node, using the parameterized discretization value.
@@ -15,7 +22,7 @@
  * @param intervEnd       size of subinterval to be calculated
  * @param discretization  discretization value to consider within the calc
  */
-double calcInterval(double intervStart, int intervEnd, double discretization) {
+double calcInterval(int intervStart, int intervEnd, double discretization) {
   double result, point1, point2, currVal;
 
   result = 0;
@@ -46,8 +53,8 @@ void validateEntry(int numberOfNodes) {
 }
 
 int main(int argc, char *argv[]) {
-  int size, rank, nproc, subintervalSize, subintervalThreshold;
-  double discretization, currIntervalStart, calculatedValue, total;
+  int size, rank, nproc, subintervalSize, currIntervalStart, subintervalThreshold;
+  double discretization, calculatedValue, total;
   MPI_Status status;
 
   // The discretization value is passed as command line argument
@@ -67,9 +74,11 @@ int main(int argc, char *argv[]) {
     for (nproc = 1; nproc < size; nproc++) {
       subintervalThreshold = subintervalSize + currIntervalStart;
 
+      printf(ANSI_COLOR_BLUE"MASTER: "ANSI_COLOR_RESET"Sending payload to slave[%d]\n\n", nproc);
+
       MPI_Send(&discretization, 1, MPI_DOUBLE, nproc, 0, MPI_COMM_WORLD);
-      MPI_Send(&currIntervalStart, 1, MPI_DOUBLE, nproc, 0, MPI_COMM_WORLD);
-      MPI_Send(&subintervalThreshold, 1, MPI_DOUBLE, nproc, 0, MPI_COMM_WORLD);
+      MPI_Send(&currIntervalStart, 1, MPI_INT, nproc, 0, MPI_COMM_WORLD);
+      MPI_Send(&subintervalThreshold, 1, MPI_INT, nproc, 0, MPI_COMM_WORLD);
 
       currIntervalStart += subintervalSize;
     }
@@ -78,19 +87,38 @@ int main(int argc, char *argv[]) {
     for (nproc = 1; nproc < size; nproc++) {
       MPI_Recv(&calculatedValue, 1, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
+      printf(
+        ANSI_COLOR_BLUE"MASTER: "ANSI_COLOR_RESET"Received %lf from slave[%d]. Adding to total value\n\n",
+        calculatedValue,
+        nproc
+      );
+
       total += calculatedValue;
     }
 
-    printf("Result: %lf\n", total);
+    printf(ANSI_COLOR_CYAN"FINAL RESULT: "ANSI_COLOR_RESET"%lf\n\n", total);
   } else {
     MPI_Recv(&discretization, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, &status);
-    MPI_Recv(&currIntervalStart, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, &status);
-    MPI_Recv(&subintervalSize, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, &status);
+    MPI_Recv(&currIntervalStart, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
+    MPI_Recv(&subintervalThreshold, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
+
+    printf(
+      ANSI_COLOR_GREEN"SLAVE[%d]: "ANSI_COLOR_RESET"Payload received. Calculating from %d to %d...\n\n",
+      rank,
+      currIntervalStart,
+      subintervalThreshold
+    );
 
     calculatedValue = calcInterval(
       currIntervalStart,
-      subintervalSize,
+      subintervalThreshold,
       discretization
+    );
+
+    printf(
+      ANSI_COLOR_GREEN"SLAVE[%d]: "ANSI_COLOR_RESET"Calc complete. Sending %lf to master\n\n",
+      rank,
+      calculatedValue
     );
 
     MPI_Send(&calculatedValue, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
